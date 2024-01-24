@@ -1163,6 +1163,12 @@ case class ScalaUDF(
     } else {
       s"$resultTerm = ($boxedType)$resultConverter.apply($getFuncResult)"
     }
+
+    // Lambda names are unstable due to the address hash value at the end. To get a stable bytecode of a class
+    // that contains lambda in its body, we need to have stable names for lambda classes. We can achieve this
+    // by removing the unstable hash at the end of the lambda class name.
+    val functionClass = if(funcCls.contains("$$Lambda")) funcCls.substring(0, funcCls.indexOf("/0x")) else funcCls;
+
     val callFunc =
       s"""
          |$boxedType $resultTerm = null;
@@ -1170,7 +1176,7 @@ case class ScalaUDF(
          |  $funcInvocation;
          |} catch (Throwable e) {
          |  throw QueryExecutionErrors.failedExecuteUserDefinedFunctionError(
-         |    "$functionName", "$inputTypesString", "$outputType", e);
+         |    "$functionClass", "$inputTypesString", "$outputType", e);
          |}
        """.stripMargin
 
